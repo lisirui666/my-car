@@ -3,28 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <!-- 苹果 iOS 独立全屏 App 配置 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="智能车控">
   <link rel="apple-touch-icon" href="https://img.icons8.com/color/180/scooter.png">
-  <title>智能车控 3D 终端</title>
+  <title>智能车控终端</title>
 
-  <!-- 引入腾讯矢量地图 3D GL SDK (已填入专属Key) -->
-  <script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&key=G46BZ-UKFLI-DSOGT-URBGJ-DC3CV-DMFOE"></script>
+  <!-- 引入腾讯地图 GL SDK 及搜索服务库 -->
+  <script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&libraries=service&key=G46BZ-UKFLI-DSOGT-URBGJ-DC3CV-DMFOE"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-      background-color: #0b0f19;
-      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      background-color: #f5f3ef;
       overflow: hidden;
       height: 100vh;
       width: 100vw;
     }
 
+    /* 全屏地图容器 */
     #map-container {
       width: 100%;
       height: 100%;
@@ -34,33 +33,35 @@
       z-index: 1;
     }
 
-    /* 顶部悬浮毛玻璃 HUD 卡片 */
+    /* 紧凑型悬浮仪表盘（不遮挡地图主体视野） */
     .dashboard {
       position: absolute;
-      top: calc(env(safe-area-inset-top) + 14px);
-      left: 16px;
-      right: 16px;
-      background: rgba(15, 23, 42, 0.88);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 18px;
-      padding: 14px 18px;
+      top: calc(env(safe-area-inset-top) + 12px);
+      left: 12px;
+      width: calc(100vw - 24px);
+      max-width: 360px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
+      padding: 12px 14px;
       z-index: 10;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+      color: #1e293b;
     }
 
     .status-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .app-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
-      color: #f8fafc;
+      color: #0f172a;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -68,38 +69,40 @@
 
     .badge {
       font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 12px;
-      background: rgba(239, 68, 68, 0.2);
-      color: #f87171;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #fee2e2;
+      color: #ef4444;
     }
     .badge.online {
-      background: rgba(34, 197, 94, 0.2);
-      color: #4ade80;
+      background: #dcfce7;
+      color: #16a34a;
     }
 
     .data-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      gap: 6px;
       text-align: center;
     }
 
     .data-item {
-      background: rgba(255, 255, 255, 0.05);
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-radius: 10px;
-      padding: 8px 4px;
+      padding: 6px 2px;
     }
 
     .data-val {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
-      color: #38bdf8;
+      color: #0284c7;
     }
 
     .data-unit {
       font-size: 10px;
-      color: #94a3b8;
+      color: #64748b;
       margin-left: 2px;
     }
 
@@ -109,43 +112,36 @@
       margin-top: 2px;
     }
 
-    /* 底部定位与视角控制栏 */
-    .control-bar {
+    /* 右下角归中按钮 */
+    .center-btn {
       position: absolute;
       bottom: calc(env(safe-area-inset-bottom) + 24px);
-      right: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      z-index: 10;
-    }
-
-    .round-btn {
-      width: 48px;
-      height: 48px;
+      right: 16px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #fff;
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.1);
       font-size: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <!-- 3D 地图容器 -->
+  <!-- 地图容器 -->
   <div id="map-container"></div>
 
-  <!-- 顶部状态卡片 -->
+  <!-- 左上角清爽型状态卡片 -->
   <div class="dashboard">
     <div class="status-row">
-      <div class="app-title">🛵 车辆实时状态</div>
-      <div id="conn-status" class="badge">正在连接云端...</div>
+      <div class="app-title">🛵 智能车辆监控</div>
+      <div id="conn-status" class="badge">正在连接...</div>
     </div>
     <div class="data-grid">
       <div class="data-item">
@@ -154,50 +150,49 @@
       </div>
       <div class="data-item">
         <div><span id="bat" class="data-val">--</span><span class="data-unit">%</span></div>
-        <div class="data-label">剩余电量</div>
+        <div class="data-label">电量</div>
       </div>
       <div class="data-item">
         <div><span id="volt" class="data-val">--</span><span class="data-unit">V</span></div>
-        <div class="data-label">总线电压</div>
+        <div class="data-label">电压</div>
       </div>
     </div>
   </div>
 
-  <!-- 底部右侧控制悬浮球 -->
-  <div class="control-bar">
-    <div class="round-btn" onclick="toggle3D()" title="切换3D立体视角">🏢</div>
-    <div class="round-btn" onclick="centerMap()" title="视角居中">🎯</div>
-  </div>
+  <!-- 定位归中按钮 -->
+  <div class="center-btn" onclick="centerMap()" title="回到校区/车辆中心">🎯</div>
 
   <script>
+    const MAP_KEY = "G46BZ-UKFLI-DSOGT-URBGJ-DC3CV-DMFOE";
     const BEMFA_UID = "6f8759397da540a7a58eded05309dcbd";
     const TOPIC = "gpsmap001";
 
-    // 默认定位坐标设为：南航金城学院（操场与行知楼中心）
-    let lat = 31.729150;
-    let lon = 118.827200;
+    // 初始备用坐标
+    let lat = 31.766200;
+    let lon = 118.825500;
+    let hasHardwareGps = false;
 
     let map, marker, polyline;
     let path = [];
-    let is3D = true;
 
-    // 1. 初始化 3D 矢量沙盘地图
+    // 1. 初始化高清校园地图（垂直俯视 + 18.2级放大，还原操场、麦当劳、行知楼视图）
     function initMap() {
       map = new TMap.Map('map-container', {
         center: new TMap.LatLng(lat, lon),
-        zoom: 17.8,         // 放大级别，呈现建筑名称与店铺
-        pitch: 50,          // 50度倾角，立显 3D 建筑沙盘
-        rotation: 0,        // 初始正北朝向
-        viewMode: '3D'      // 开启纯 3D 渲染
+        zoom: 18.2,         // 精准放大到显示行知楼、枫逸楼、1点点、麦当劳和操场
+        pitch: 0,           // 0度正上方俯视，与目标截图完全一致
+        rotation: 0,
+        viewMode: '3D',     // 保留建筑边缘微立体阴影
+        showControl: false  // 隐藏多余缩放条，保持画面干净
       });
 
       marker = new TMap.MultiMarker({
         map: map,
         styles: {
           car: new TMap.MarkerStyle({
-            width: 34,
-            height: 34,
-            anchor: { x: 17, y: 17 },
+            width: 32,
+            height: 32,
+            anchor: { x: 16, y: 16 },
             src: 'https://img.icons8.com/color/48/marker.png'
           })
         },
@@ -215,15 +210,63 @@
           })
         }
       });
+
+      // 自动搜索并锁定“南航金城-行知楼”与操场中心位置
+      locateCampusExact();
     }
 
-    // 2. 连接巴法云长连接
+    // 2. 自动检索“南航金城-行知楼”真实坐标并居中
+    function locateCampusExact() {
+      // 方式 A：通过腾讯地图内置 Search SDK 搜索
+      if (TMap.service && TMap.service.Search) {
+        const search = new TMap.service.Search({ pageSize: 5 });
+        search.searchRegion({
+          keyword: '南航金城-行知楼',
+          cityName: '南京'
+        }).then((res) => {
+          if (!hasHardwareGps && res.data && res.data.length > 0) {
+            const pos = res.data[0].location;
+            // 将视野中心稍微偏西调整到操场与行知楼正中间（麦当劳/1点点位置）
+            applyCampusCenter(pos.lat, pos.lng - 0.00055);
+          }
+        }).catch(() => {
+          locateByJsonp();
+        });
+      } else {
+        locateByJsonp();
+      }
+    }
+
+    // 方式 B：JSONP 兜底精准检索
+    window.onCampusPoiCallback = function(res) {
+      if (!hasHardwareGps && res && res.data && res.data.length > 0) {
+        const loc = res.data[0].location;
+        applyCampusCenter(loc.lat, loc.lng - 0.00055);
+      }
+    };
+
+    function locateByJsonp() {
+      const script = document.createElement('script');
+      script.src = `https://apis.map.qq.com/ws/place/v1/search?keyword=${encodeURIComponent('南航金城-行知楼')}&boundary=region(南京,0)&output=jsonp&key=${MAP_KEY}&callback=onCampusPoiCallback`;
+      document.body.appendChild(script);
+    }
+
+    function applyCampusCenter(newLat, newLon) {
+      lat = newLat;
+      lon = newLon;
+      const centerPos = new TMap.LatLng(lat, lon);
+      map.setCenter(centerPos);
+      map.setZoom(18.2);
+      marker.updateGeometries([{ id: 'car', styleId: 'car', position: centerPos }]);
+    }
+
+    // 3. 连接巴法云接收硬件实时数据
     function initWebSocket() {
       const socket = new WebSocket('wss://bemfa.com:9504/wss');
       const badge = document.getElementById('conn-status');
 
       socket.onopen = () => {
-        badge.innerText = '在线连接正常';
+        badge.innerText = '在线正常';
         badge.className = 'badge online';
         socket.send(`cmd=1&uid=${BEMFA_UID}&topic=${TOPIC}\r\n`);
         setInterval(() => socket.send('ping\r\n'), 30000);
@@ -240,14 +283,12 @@
             if (v.volt !== undefined)  document.getElementById('volt').innerText = Number(v.volt).toFixed(1);
 
             if (v.lat && v.lon) {
+              hasHardwareGps = true;
               lat = Number(v.lat);
               lon = Number(v.lon);
               const pos = new TMap.LatLng(lat, lon);
-              
-              marker.updateGeometries([{ id: 'car', position: pos }]);
+              marker.updateGeometries([{ id: 'car', styleId: 'car', position: pos }]);
               path.push(pos);
-
-              // 仅当累计点数大于等于 2 时才绘制折线，彻底消除黄色 paths 警告
               if (path.length >= 2) {
                 polyline.updateGeometries([{ id: 'track', styleId: 'line', paths: path }]);
               }
@@ -257,22 +298,17 @@
       };
 
       socket.onclose = () => {
-        badge.innerText = '连接已断开';
+        badge.innerText = '连接断开';
         badge.className = 'badge';
         setTimeout(initWebSocket, 3000);
       };
     }
 
-    // 视角居中
     function centerMap() {
-      if (map) map.setCenter(new TMap.LatLng(lat, lon));
-    }
-
-    // 3D / 2D 平面一键切换
-    function toggle3D() {
-      if (!map) return;
-      is3D = !is3D;
-      map.setPitch(is3D ? 50 : 0);
+      if (map) {
+        map.setCenter(new TMap.LatLng(lat, lon));
+        map.setZoom(18.2);
+      }
     }
 
     window.onload = () => {

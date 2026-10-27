@@ -10,8 +10,8 @@
   <link rel="apple-touch-icon" href="https://img.icons8.com/color/180/scooter.png">
   <title>智能车控终端</title>
 
-  <!-- 引入腾讯地图 GL SDK 及搜索服务库 -->
-  <script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&libraries=service&key=G46BZ-UKFLI-DSOGT-URBGJ-DC3CV-DMFOE"></script>
+  <!-- 引入腾讯地图 GL SDK -->
+  <script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&key=G46BZ-UKFLI-DSOGT-URBGJ-DC3CV-DMFOE"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -23,7 +23,6 @@
       width: 100vw;
     }
 
-    /* 全屏地图容器 */
     #map-container {
       width: 100%;
       height: 100%;
@@ -33,14 +32,14 @@
       z-index: 1;
     }
 
-    /* 紧凑型悬浮仪表盘（不遮挡地图主体视野） */
+    /* 悬浮状态卡片 */
     .dashboard {
       position: absolute;
       top: calc(env(safe-area-inset-top) + 12px);
       left: 12px;
       width: calc(100vw - 24px);
       max-width: 360px;
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(255, 255, 255, 0.94);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(0, 0, 0, 0.08);
@@ -112,7 +111,7 @@
       margin-top: 2px;
     }
 
-    /* 右下角归中按钮 */
+    /* 归中按钮 */
     .center-btn {
       position: absolute;
       bottom: calc(env(safe-area-inset-bottom) + 24px);
@@ -134,10 +133,8 @@
 </head>
 <body>
 
-  <!-- 地图容器 -->
   <div id="map-container"></div>
 
-  <!-- 左上角清爽型状态卡片 -->
   <div class="dashboard">
     <div class="status-row">
       <div class="app-title">🛵 智能车辆监控</div>
@@ -159,31 +156,27 @@
     </div>
   </div>
 
-  <!-- 定位归中按钮 -->
   <div class="center-btn" onclick="centerMap()" title="回到校区/车辆中心">🎯</div>
 
   <script>
-    const MAP_KEY = "G46BZ-UKFLI-DSOGT-URBGJ-DC3CV-DMFOE";
     const BEMFA_UID = "6f8759397da540a7a58eded05309dcbd";
     const TOPIC = "gpsmap001";
 
-    // 初始备用坐标
-    let lat = 31.766200;
-    let lon = 118.825500;
-    let hasHardwareGps = false;
+    // 精准锁定：南航金城学院（操场与行知楼中心）
+    let lat = 31.734080;
+    let lon = 118.882150;
 
     let map, marker, polyline;
     let path = [];
 
-    // 1. 初始化高清校园地图（垂直俯视 + 18.2级放大，还原操场、麦当劳、行知楼视图）
     function initMap() {
       map = new TMap.Map('map-container', {
         center: new TMap.LatLng(lat, lon),
-        zoom: 18.2,         // 精准放大到显示行知楼、枫逸楼、1点点、麦当劳和操场
-        pitch: 0,           // 0度正上方俯视，与目标截图完全一致
+        zoom: 18.2,         // 精准比例尺，显示跑道、楼宇与商铺
+        pitch: 0,           // 垂直俯视
         rotation: 0,
-        viewMode: '3D',     // 保留建筑边缘微立体阴影
-        showControl: false  // 隐藏多余缩放条，保持画面干净
+        viewMode: '3D',
+        showControl: false
       });
 
       marker = new TMap.MultiMarker({
@@ -210,57 +203,8 @@
           })
         }
       });
-
-      // 自动搜索并锁定“南航金城-行知楼”与操场中心位置
-      locateCampusExact();
     }
 
-    // 2. 自动检索“南航金城-行知楼”真实坐标并居中
-    function locateCampusExact() {
-      // 方式 A：通过腾讯地图内置 Search SDK 搜索
-      if (TMap.service && TMap.service.Search) {
-        const search = new TMap.service.Search({ pageSize: 5 });
-        search.searchRegion({
-          keyword: '南航金城-行知楼',
-          cityName: '南京'
-        }).then((res) => {
-          if (!hasHardwareGps && res.data && res.data.length > 0) {
-            const pos = res.data[0].location;
-            // 将视野中心稍微偏西调整到操场与行知楼正中间（麦当劳/1点点位置）
-            applyCampusCenter(pos.lat, pos.lng - 0.00055);
-          }
-        }).catch(() => {
-          locateByJsonp();
-        });
-      } else {
-        locateByJsonp();
-      }
-    }
-
-    // 方式 B：JSONP 兜底精准检索
-    window.onCampusPoiCallback = function(res) {
-      if (!hasHardwareGps && res && res.data && res.data.length > 0) {
-        const loc = res.data[0].location;
-        applyCampusCenter(loc.lat, loc.lng - 0.00055);
-      }
-    };
-
-    function locateByJsonp() {
-      const script = document.createElement('script');
-      script.src = `https://apis.map.qq.com/ws/place/v1/search?keyword=${encodeURIComponent('南航金城-行知楼')}&boundary=region(南京,0)&output=jsonp&key=${MAP_KEY}&callback=onCampusPoiCallback`;
-      document.body.appendChild(script);
-    }
-
-    function applyCampusCenter(newLat, newLon) {
-      lat = newLat;
-      lon = newLon;
-      const centerPos = new TMap.LatLng(lat, lon);
-      map.setCenter(centerPos);
-      map.setZoom(18.2);
-      marker.updateGeometries([{ id: 'car', styleId: 'car', position: centerPos }]);
-    }
-
-    // 3. 连接巴法云接收硬件实时数据
     function initWebSocket() {
       const socket = new WebSocket('wss://bemfa.com:9504/wss');
       const badge = document.getElementById('conn-status');
@@ -283,11 +227,10 @@
             if (v.volt !== undefined)  document.getElementById('volt').innerText = Number(v.volt).toFixed(1);
 
             if (v.lat && v.lon) {
-              hasHardwareGps = true;
               lat = Number(v.lat);
               lon = Number(v.lon);
               const pos = new TMap.LatLng(lat, lon);
-              marker.updateGeometries([{ id: 'car', styleId: 'car', position: pos }]);
+              marker.updateGeometries([{ id: 'car', position: pos }]);
               path.push(pos);
               if (path.length >= 2) {
                 polyline.updateGeometries([{ id: 'track', styleId: 'line', paths: path }]);

@@ -10,7 +10,6 @@
   <link rel="apple-touch-icon" href="https://img.icons8.com/color/180/scooter.png">
   <title>智能车控终端</title>
 
-  <!-- 引入腾讯地图 GL SDK -->
   <script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&key=G46BZ-UKFLI-DSOGT-URBGJ-DC3CV-DMFOE"></script>
 
   <style>
@@ -32,7 +31,6 @@
       z-index: 1;
     }
 
-    /* 悬浮状态卡片 */
     .dashboard {
       position: absolute;
       top: calc(env(safe-area-inset-top) + 12px);
@@ -111,7 +109,17 @@
       margin-top: 2px;
     }
 
-    /* 归中按钮 */
+    /* 底部实时坐标状态栏，方便直观核对坐标是否生效 */
+    .coord-bar {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px dashed #e2e8f0;
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+
     .center-btn {
       position: absolute;
       bottom: calc(env(safe-area-inset-bottom) + 24px);
@@ -154,6 +162,10 @@
         <div class="data-label">电压</div>
       </div>
     </div>
+    <div class="coord-bar">
+      <span id="coord-source">定位源：初始预设</span>
+      <span id="coord-text">-- , --</span>
+    </div>
   </div>
 
   <div class="center-btn" onclick="centerMap()" title="回到校区/车辆中心">🎯</div>
@@ -162,18 +174,26 @@
     const BEMFA_UID = "6f8759397da540a7a58eded05309dcbd";
     const TOPIC = "gpsmap001";
 
-    // 精准锁定：南航金城学院（操场与行知楼中心）
-    let lat = 31.734080;
-    let lon = 118.882150;
+    // 👇 请确保这里填的是你正确的学校经纬度（注意：lat是31开头的纬度，lon是118开头的经度）
+    let lat = 31.681250;
+    let lon = 118.878300;
 
     let map, marker, polyline;
     let path = [];
 
+    function updateCoordDisplay(sourceName) {
+      document.getElementById('coord-source').innerText = '定位源：' + sourceName;
+      document.getElementById('coord-text').innerText = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    }
+
     function initMap() {
+      const initPos = new TMap.LatLng(lat, lon);
+      updateCoordDisplay('代码初始值');
+
       map = new TMap.Map('map-container', {
-        center: new TMap.LatLng(lat, lon),
-        zoom: 18.2,         // 精准比例尺，显示跑道、楼宇与商铺
-        pitch: 0,           // 垂直俯视
+        center: initPos,
+        zoom: 18.2,
+        pitch: 0,
         rotation: 0,
         viewMode: '3D',
         showControl: false
@@ -189,7 +209,7 @@
             src: 'https://img.icons8.com/color/48/marker.png'
           })
         },
-        geometries: [{ id: 'car', styleId: 'car', position: new TMap.LatLng(lat, lon) }]
+        geometries: [{ id: 'car', styleId: 'car', position: initPos }]
       });
 
       polyline = new TMap.MultiPolyline({
@@ -226,11 +246,16 @@
             if (v.bat !== undefined)   document.getElementById('bat').innerText = v.bat;
             if (v.volt !== undefined)  document.getElementById('volt').innerText = Number(v.volt).toFixed(1);
 
-            if (v.lat && v.lon) {
+            // 只有当云端发来的经纬度是有效数值时，才更新位置并让镜头平滑跟随
+            if (v.lat && v.lon && Number(v.lat) > 20 && Number(v.lon) > 100) {
               lat = Number(v.lat);
               lon = Number(v.lon);
               const pos = new TMap.LatLng(lat, lon);
-              marker.updateGeometries([{ id: 'car', position: pos }]);
+              
+              marker.updateGeometries([{ id: 'car', styleId: 'car', position: pos }]);
+              map.panTo(pos); // 让地图视野自动跟随到新坐标
+              updateCoordDisplay('巴法云实时数据');
+
               path.push(pos);
               if (path.length >= 2) {
                 polyline.updateGeometries([{ id: 'track', styleId: 'line', paths: path }]);
